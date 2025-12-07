@@ -10,11 +10,6 @@ struct IdRange {
 }
 
 impl IdRange {
-    fn variability(&self) -> usize {
-        let diff = self.last - self.first;
-        format!("{}", diff).len()
-    }
-
     fn get_invalid_ids(&self) -> Vec<u64> {
         let mut res = Vec::new();
         for id in self.first..self.last + 1 {

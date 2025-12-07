@@ -2,6 +2,8 @@ use std::fs;
 
 mod day1;
 mod day2;
+mod day3;
+mod day4;
 
 #[derive(clap::Parser, Debug)]
 struct Args {
@@ -12,7 +14,7 @@ struct Args {
 fn main() {
     let args = <Args as clap::Parser>::parse();
 
-    let dispatch = [day1::run, day2::run];
+    let dispatch = [day1::run, day2::run, day3::run, day4::run];
 
     if args.day as usize - 1 < dispatch.len() {
         println!("Running day {}", args.day);
