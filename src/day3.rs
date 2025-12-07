@@ -51,7 +51,7 @@ fn part2(banks: &Vec<Vec<u8>>) -> u64 {
                 .iter()
                 .enumerate()
                 .max_by(|(i1, val1), (i2, val2)| {
-                    val1.cmp(&val2).then(i2.cmp(i1)) // Compare values, then prefer smaller index
+                    val1.cmp(val2).then(i2.cmp(i1)) // Compare values, then prefer smaller index
                 })
                 .expect("Max not found");
             last_max_index += id_max + 1;

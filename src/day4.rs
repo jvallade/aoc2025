@@ -1,7 +1,7 @@
 use nom::IResult;
 use nom::Parser;
 use nom::branch::alt;
-use nom::character::complete::{char, one_of};
+use nom::character::complete::char;
 use nom::combinator::map;
 use nom::multi::many1;
 use nom::multi::separated_list1;
@@ -27,7 +27,7 @@ fn grid(input: &str) -> IResult<&str, Vec<Vec<Cell>>> {
     separated_list1(char('\n'), cell_row).parse(input)
 }
 
-fn part1(cells: &Vec<Vec<Cell>>) -> u64 {
+fn part1(cells: &[Vec<Cell>]) -> u64 {
     let mut res = 0;
     for i in 0..cells.len() {
         for j in 0..cells[0].len() {
@@ -48,13 +48,11 @@ fn part1(cells: &Vec<Vec<Cell>>) -> u64 {
                 (i.wrapping_add(1), j.wrapping_add(1)),
             ];
             for (x, y) in positions_to_check {
-                if let Some(c) = cells.get(x) {
-                    if let Some(cc) = c.get(y) {
-                        // dbg!(cc);
-                        if cc.occupied {
-                            count += 1;
-                        }
-                    }
+                if let Some(c) = cells.get(x)
+                    && let Some(cc) = c.get(y)
+                    && cc.occupied
+                {
+                    count += 1;
                 }
             }
             if count < 4 {
@@ -64,7 +62,7 @@ fn part1(cells: &Vec<Vec<Cell>>) -> u64 {
     }
     res
 }
-fn cells_to_be_cleared(cells: &Vec<Vec<Cell>>) -> Vec<(usize, usize)> {
+fn cells_to_be_cleared(cells: &[Vec<Cell>]) -> Vec<(usize, usize)> {
     let mut res = Vec::new();
     for i in 0..cells.len() {
         for j in 0..cells[0].len() {
@@ -85,12 +83,11 @@ fn cells_to_be_cleared(cells: &Vec<Vec<Cell>>) -> Vec<(usize, usize)> {
                 (i.wrapping_add(1), j.wrapping_add(1)),
             ];
             for (x, y) in positions_to_check {
-                if let Some(c) = cells.get(x) {
-                    if let Some(cc) = c.get(y) {
-                        if cc.occupied {
-                            count += 1;
-                        }
-                    }
+                if let Some(c) = cells.get(x)
+                    && let Some(cc) = c.get(y)
+                    && cc.occupied
+                {
+                    count += 1;
                 }
             }
             if count < 4 {
@@ -100,12 +97,12 @@ fn cells_to_be_cleared(cells: &Vec<Vec<Cell>>) -> Vec<(usize, usize)> {
     }
     res
 }
-fn part2(cells: &mut Vec<Vec<Cell>>) -> usize {
+fn part2(cells: &mut [Vec<Cell>]) -> usize {
     let mut res = 0;
 
-    while true {
+    loop {
         let accessible_cells = cells_to_be_cleared(cells);
-        if accessible_cells.len() == 0 {
+        if accessible_cells.is_empty() {
             break;
         }
         res += accessible_cells.len();
