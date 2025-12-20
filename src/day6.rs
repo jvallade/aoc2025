@@ -155,10 +155,5 @@ mod tests {
         let (_, problems) = problems2(data).expect("Could not parse the input data");
         dbg!(&problems);
         assert_eq!(part2(&problems), 3263827);
-        // dbg!(&ranges);
-        // dbg!(&food_ids);
-
-        // assert_eq!(part1(&ranges, &food_ids), 3);
-        // assert_eq!(part2(&mut ranges), 16);
     }
 }
