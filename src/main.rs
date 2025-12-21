@@ -7,6 +7,7 @@ mod day4;
 mod day5;
 mod day6;
 mod day7;
+mod day8;
 
 #[derive(clap::Parser, Debug)]
 struct Args {
@@ -25,13 +26,15 @@ fn main() {
         day5::run,
         day6::run,
         day7::run,
+        day8::run,
     ];
 
-    if args.day as usize - 1 < dispatch.len() {
+    let dispatch_index = args.day as usize - 1;
+    if dispatch_index < dispatch.len() {
         println!("Running day {}", args.day);
         let input = fs::read_to_string(format!("./resources/input{}", args.day))
             .expect("Could not load the input file");
-        dispatch[(args.day - 1) as usize](&input);
+        dispatch[dispatch_index](&input);
     } else {
         println!("Day {} not yet implemented !", args.day);
     }
