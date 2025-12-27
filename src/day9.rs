@@ -8,6 +8,9 @@ use nom::Parser;
 use nom::character::complete::{char, u64};
 use nom::multi::separated_list1;
 
+use itertools::Itertools;
+use rayon::prelude::*;
+
 #[derive(Debug, Eq, PartialOrd, Ord, Hash, Clone, Default)]
 struct Tile {
     x: u64,
@@ -508,29 +511,20 @@ fn part2(tiles: &mut Vec<Tile>) -> u64 {
     let area = get_tiles_in_area(tiles, &x_map_inv, &y_map_inv);
 
     // Compute the area of all the rectangles and sort them in order
-    let mut heap = BinaryHeap::new();
-    let mut seen = HashSet::new();
-    let mut i = 0;
-    tiles.iter().for_each(|t1| {
-        tiles.iter().for_each(|t2| {
-            println!("progress {} / {}", i, tiles.len().pow(2));
-            if t1 != t2 && seen.insert((t1, t2)) {
-                let edges = t1.get_compressed_edges(t2, &x_map_inv, &y_map_inv);
-                if edges.iter().all(|t| area.contains(t)) {
-                    heap.push(Rectangle {
-                        tiles: ((*t1).clone(), (*t2).clone()),
-                        area: t1.area_size(t2),
-                    });
-                }
-                seen.insert((t1, t2));
-                seen.insert((t2, t1));
+    tiles
+        .iter()
+        .tuple_combinations()
+        .par_bridge()
+        .map(|(t1, t2)| {
+            let edges = t1.get_compressed_edges(t2, &x_map_inv, &y_map_inv);
+            if edges.par_iter().all(|t| area.contains(t)) {
+                t1.area_size(t2)
+            } else {
+                0
             }
-            i += 1;
-        });
-    });
-
-    let rectangle = heap.pop().unwrap();
-    rectangle.area
+        })
+        .max()
+        .unwrap()
 }
 
 pub fn run(input: &str) {
