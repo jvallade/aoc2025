@@ -2,6 +2,8 @@ use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::time;
+use std::time::Duration;
 
 use nom::IResult;
 use nom::Parser;
@@ -499,32 +501,42 @@ fn part1(tiles: &[Tile]) -> u64 {
 }
 
 fn part2(tiles: &mut Vec<Tile>) -> u64 {
+    let t0 = time::SystemTime::now();
+
     // Compute compression maps
     let (x_map, y_map, x_map_inv, y_map_inv) = get_compression(&tiles);
+    let t1 = time::SystemTime::now();
+    println!("{:?}", t1.duration_since(t0));
 
     // Compress red tiles
     tiles
         .iter_mut()
         .for_each(|t| t.apply_compression(&x_map, &y_map));
 
+    let t2 = time::SystemTime::now();
+    println!("{:?}", t2.duration_since(t1));
     // Get the list of tiles in the area
     let area = get_tiles_in_area(tiles, &x_map_inv, &y_map_inv);
 
-    // Compute the area of all the rectangles and sort them in order
-    tiles
+    let t3 = time::SystemTime::now();
+    println!("{:?}", t3.duration_since(t2));
+    let res = tiles
         .iter()
-        .tuple_combinations()
-        .par_bridge()
+        .tuple_combinations() // create tuple of tiles
+        .par_bridge() // bridge to parallel iteration
         .map(|(t1, t2)| {
             let edges = t1.get_compressed_edges(t2, &x_map_inv, &y_map_inv);
-            if edges.par_iter().all(|t| area.contains(t)) {
+            if edges.iter().all(|t| area.contains(t)) {
                 t1.area_size(t2)
             } else {
                 0
             }
         })
         .max()
-        .unwrap()
+        .unwrap();
+    let t4 = time::SystemTime::now();
+    println!("{:?}", t4.duration_since(t3));
+    res
 }
 
 pub fn run(input: &str) {
