@@ -101,7 +101,7 @@ fn problems2(input: &str) -> IResult<&str, Vec<Problem>> {
         }
     }
     problems.push(Problem {
-        numbers: numbers,
+        numbers,
         operation: signs.pop_front().unwrap().unwrap(),
     });
 

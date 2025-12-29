@@ -74,7 +74,7 @@ fn range(input: &str) -> IResult<&str, IdRange> {
     Ok((
         remainder,
         IdRange {
-            first: *ids.get(0).expect("did not find the first ID"),
+            first: *ids.first().expect("did not find the first ID"),
             last: *ids.get(1).expect("did not find the last ID"),
         },
     ))

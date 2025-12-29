@@ -15,8 +15,7 @@ fn range(input: &str) -> IResult<&str, FoodRange> {
     Ok((
         remainder,
         FoodRange {
-            start: *range
-                .get(0)
+            start: *range.first()
                 .expect("Did not find the first element of the range"),
             end: *range
                 .get(1)

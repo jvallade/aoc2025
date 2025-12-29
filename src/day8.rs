@@ -53,7 +53,7 @@ fn position(input: &str) -> IResult<&str, Box> {
     Ok((
         remainder,
         Box {
-            x: *coords.get(0).expect("X not found"),
+            x: *coords.first().expect("X not found"),
             y: *coords.get(1).expect("Y not found"),
             z: *coords.get(2).expect("Z not found"),
         },
@@ -74,7 +74,7 @@ fn distances(boxes: &[Box]) -> BinaryHeap<Reverse<Distance>> {
                 if seen.insert(pair.clone()) {
                     let distance = Distance {
                         boxes: pair,
-                        distance: b1.distance(&b2).clone(),
+                        distance: b1.distance(b2),
                     };
                     distances.push(Reverse(distance));
                 }
@@ -120,7 +120,7 @@ fn part1(iteration: u64, boxes: &[Box]) -> u64 {
             };
         }
     }
-    circuits.sort_by(|c1, c2| c1.len().cmp(&c2.len()));
+    circuits.sort_by_key(|c1| c1.len());
     let mut res = 1;
     for _ in 0..3 {
         res *= circuits.pop().unwrap().len();

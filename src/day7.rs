@@ -112,8 +112,8 @@ fn part2(input: &str) -> u64 {
 }
 
 pub fn run(input: &str) {
-    println!("=> part1 : {}", part1(&input));
-    println!("=> part2 : {}", part2(&input));
+    println!("=> part1 : {}", part1(input));
+    println!("=> part2 : {}", part2(input));
 }
 
 #[cfg(test)]
