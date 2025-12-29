@@ -30,7 +30,7 @@ impl Eq for Distance {}
 
 impl PartialOrd for Distance {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.distance.partial_cmp(&other.distance)
+        Some(self.cmp(other))
     }
 }
 

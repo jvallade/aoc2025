@@ -233,6 +233,7 @@ fn tiles(input: &str) -> IResult<&str, Vec<Tile>> {
     separated_list1(char('\n'), tile).parse(input)
 }
 
+#[allow(clippy::type_complexity)]
 fn get_compression(
     tiles: &[Tile],
 ) -> (

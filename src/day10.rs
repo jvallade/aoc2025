@@ -180,7 +180,7 @@ fn joltage(input: &str) -> IResult<&str, Joltage> {
         delimited(tag("{"), separated_list1(char(','), u64), tag("}")).parse(input)?;
     Ok((remainder, Joltage { numbers }))
 }
-fn machine(input: &str) -> IResult<&str, (Lights, Vec<Button>, Joltage)> {
+fn machine(input: &str) -> IResult<&str, Machine> {
     let (remainder, lights) = lights(input)?;
     let (remainder, _) = char(' ').parse(remainder)?;
     let (remainder, buttons) = buttons(remainder)?;
@@ -188,11 +188,13 @@ fn machine(input: &str) -> IResult<&str, (Lights, Vec<Button>, Joltage)> {
     let (remainder, joltage) = joltage(remainder)?;
     Ok((remainder, (lights, buttons, joltage)))
 }
-fn machines(input: &str) -> IResult<&str, Vec<(Lights, Vec<Button>, Joltage)>> {
+fn machines(input: &str) -> IResult<&str, Vec<Machine>> {
     separated_list1(char('\n'), machine).parse(input)
 }
 
 // === Data structures ===
+
+type Machine = (Lights, Vec<Button>, Joltage);
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct Lights {
