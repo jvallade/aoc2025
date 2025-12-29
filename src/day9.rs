@@ -2,8 +2,8 @@ use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::hash::Hash;
 use std::time;
-use std::time::Duration;
 
 use nom::IResult;
 use nom::Parser;
@@ -13,7 +13,7 @@ use nom::multi::separated_list1;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-#[derive(Debug, Eq, PartialOrd, Ord, Hash, Clone, Default)]
+#[derive(Debug, Eq, PartialOrd, Ord, Clone, Default)]
 struct Tile {
     x: u64,
     y: u64,
@@ -24,6 +24,13 @@ struct Tile {
 impl PartialEq for Tile {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
+    }
+}
+
+impl Hash for Tile {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.x.hash(state);
+        self.y.hash(state);
     }
 }
 
@@ -201,7 +208,7 @@ struct Rectangle {
 
 impl PartialOrd for Rectangle {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.area.partial_cmp(&other.area)
+        Some(self.cmp(other))
     }
 }
 
@@ -216,7 +223,7 @@ fn tile(input: &str) -> IResult<&str, Tile> {
     Ok((
         remainder,
         Tile::new(
-            *coords.get(0).expect("X not found"),
+            *coords.first().expect("X not found"),
             *coords.get(1).expect("Y not found"),
         ),
     ))
@@ -263,7 +270,7 @@ fn get_compression(
         y_map_inv.insert(i as u64, *y);
     });
 
-    return (x_map, y_map, x_map_inv, y_map_inv);
+    (x_map, y_map, x_map_inv, y_map_inv)
 }
 
 fn draw(red_tiles: &[Tile]) {
@@ -285,7 +292,7 @@ fn draw(red_tiles: &[Tile]) {
                 print!(".");
             }
         }
-        print!("\n");
+        println!();
     }
 }
 
@@ -415,7 +422,7 @@ fn get_tiles_in_area(
             continue;
         };
 
-        if let Some(_) = &start {
+        if start.is_some() {
             break;
         }
     }
@@ -425,57 +432,55 @@ fn get_tiles_in_area(
     let mut visited = HashSet::new();
     let mut stack = vec![start];
     while let Some(node) = stack.pop() {
-        if visited.insert(node.clone()) {
-            if !node.is_on_polygon_edge(tiles) {
-                stack.push(Tile::new_compressed(
-                    node.x_compressed.saturating_sub(1),
-                    node.y_compressed,
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed.saturating_add(1),
-                    node.y_compressed,
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed,
-                    node.y_compressed.saturating_add(1),
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed,
-                    node.y_compressed.saturating_sub(1),
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed.saturating_sub(1),
-                    node.y_compressed.saturating_sub(1),
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed.saturating_add(1),
-                    node.y_compressed.saturating_sub(1),
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed.saturating_sub(1),
-                    node.y_compressed.saturating_add(1),
-                    x_map_inv,
-                    y_map_inv,
-                ));
-                stack.push(Tile::new_compressed(
-                    node.x_compressed.saturating_add(1),
-                    node.y_compressed.saturating_add(1),
-                    x_map_inv,
-                    y_map_inv,
-                ));
-            }
+        if visited.insert(node.clone()) && !node.is_on_polygon_edge(tiles) {
+            stack.push(Tile::new_compressed(
+                node.x_compressed.saturating_sub(1),
+                node.y_compressed,
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed.saturating_add(1),
+                node.y_compressed,
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed,
+                node.y_compressed.saturating_add(1),
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed,
+                node.y_compressed.saturating_sub(1),
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed.saturating_sub(1),
+                node.y_compressed.saturating_sub(1),
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed.saturating_add(1),
+                node.y_compressed.saturating_sub(1),
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed.saturating_sub(1),
+                node.y_compressed.saturating_add(1),
+                x_map_inv,
+                y_map_inv,
+            ));
+            stack.push(Tile::new_compressed(
+                node.x_compressed.saturating_add(1),
+                node.y_compressed.saturating_add(1),
+                x_map_inv,
+                y_map_inv,
+            ));
         }
     }
     visited
@@ -500,11 +505,11 @@ fn part1(tiles: &[Tile]) -> u64 {
     heap.pop().unwrap().area
 }
 
-fn part2(tiles: &mut Vec<Tile>) -> u64 {
+fn part2(tiles: &mut [Tile]) -> u64 {
     let t0 = time::SystemTime::now();
 
     // Compute compression maps
-    let (x_map, y_map, x_map_inv, y_map_inv) = get_compression(&tiles);
+    let (x_map, y_map, x_map_inv, y_map_inv) = get_compression(tiles);
     let t1 = time::SystemTime::now();
     println!("{:?}", t1.duration_since(t0));
 

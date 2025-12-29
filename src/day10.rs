@@ -1,5 +1,7 @@
 use std::{error::Error, fmt::Display};
 
+use cached::UnboundCache;
+use cached::proc_macro::cached;
 use nom::{
     IResult, Parser,
     bytes::complete::tag,
@@ -9,8 +11,14 @@ use nom::{
     sequence::delimited,
 };
 use rayon::prelude::*;
+use z3::{Optimize, SatResult, ast::Int};
 
-fn search_shortest_combination(init: &Lights, target: &Lights, buttons: &[Button]) -> u64 {
+#[cached(
+    ty = "UnboundCache<String, u64>",
+    create = "{ UnboundCache::new() }",
+    convert = r#"{ format!("{:?}{:?}{:?}", init, target, buttons) }"#
+)]
+fn search_shortest_lights(init: &Lights, target: &Lights, buttons: &[Button]) -> u64 {
     let lights_to_toggle = init.diff(target).expect("Could not perform diff on lights");
     if lights_to_toggle.is_empty() {
         return 0;
@@ -36,7 +44,7 @@ fn search_shortest_combination(init: &Lights, target: &Lights, buttons: &[Button
         let mut current = (*init).clone();
         current.apply_button(possible_start);
 
-        let res = search_shortest_combination(&current, target, &remaining_buttons);
+        let res = search_shortest_lights(&current, target, &remaining_buttons);
         if res < min_path {
             min_path = res;
         }
@@ -44,23 +52,108 @@ fn search_shortest_combination(init: &Lights, target: &Lights, buttons: &[Button
     min_path.saturating_add(1)
 }
 
+// This works but does not converge quickly enough
+fn search_shortest_joltages(init: &Joltage, target: &Joltage, buttons: &[Button]) -> u64 {
+    let counter_to_increase = init.diff(target).expect("Could not perform diff");
+    if counter_to_increase.is_empty() {
+        return 0;
+    }
+
+    let possible_buttons: Vec<_> = buttons
+        .iter()
+        // all the counter increased by this button are to be increased
+        .filter(|b| b.numbers.iter().all(|n| counter_to_increase.contains(n)))
+        .cloned()
+        .collect();
+
+    let mut min_path = u64::MAX;
+    for possible_button in possible_buttons {
+        let mut current = (*init).clone();
+        current.apply_button(&possible_button);
+
+        let res = search_shortest_joltages(&current, target, buttons);
+        if res < min_path {
+            min_path = res;
+        }
+    }
+    min_path.saturating_add(1)
+}
+
+// Z3 solutions
+fn solver_part1(target: &Lights, buttons: &[Button]) -> u64 {
+    todo!()
+}
+
+fn solver_part2(target: &Joltage, buttons: &[Button]) -> u64 {
+    // Create X vector = number of press on each button
+    let x: Vec<_> = (0..buttons.len())
+        .map(|i| Int::new_const(format!("x{i}")))
+        .collect();
+
+    // Create a Z3 optimizer
+    let opt = Optimize::new();
+
+    // All the solutions must be positive
+    x.iter().for_each(|xi| opt.assert(&xi.ge(0)));
+
+    // Implement A.X = B
+    for (j, joltage) in target.numbers.iter().enumerate() {
+        let sum: Int = buttons
+            .iter()
+            .enumerate()
+            // consider only buttons listing the current joltage
+            .filter(|(_, b)| b.numbers.contains(&(j as u64)))
+            // mapping to the corresponding button press
+            .map(|(i, _)| x[i].clone())
+            .sum();
+        // implement the constraint that the sum of presses on valid buttons
+        // equals the expected joltage
+        opt.assert(&sum.eq(*joltage));
+    }
+
+    // Define the objective
+    let obj: Int = x.iter().sum();
+    opt.minimize(&obj);
+
+    // Check if a solution exists
+    let mut res = u64::MAX;
+    match opt.check(&[]) {
+        SatResult::Sat => {
+            let model = opt.get_model().unwrap();
+            let solution: Vec<u64> = x
+                .iter()
+                .map(|xi| model.eval(xi, true).unwrap().as_u64().unwrap())
+                .collect();
+            res = solution.iter().sum();
+            // println!("Minimal norm solution: {solution:?}");
+            // println!("Norm: {res}");
+        }
+        SatResult::Unsat => println!("No solution exists."),
+        SatResult::Unknown => println!("Z3 could not determine satisfiability."),
+    }
+    res
+}
+
 fn part1(machines: &[(Lights, Vec<Button>, Joltage)]) -> u64 {
     machines
         .into_par_iter()
         .map(|(lights, buttons, _)| {
-            search_shortest_combination(&Lights::new(lights.status.len()), lights, buttons)
+            search_shortest_lights(&Lights::new(lights.status.len()), lights, buttons)
         })
         .sum()
 }
 
-fn part2() -> u64 {
-    todo!()
+fn part2(machines: &[(Lights, Vec<Button>, Joltage)]) -> u64 {
+    machines
+        .into_par_iter()
+        .map(|(_, buttons, joltages)| solver_part2(joltages, buttons))
+        .sum()
 }
 
 pub fn run(input: &str) {
     let (_, machines) = machines(input).expect("Could not parse input problems");
     println!("=> part1 : {}", part1(&machines));
-    println!("=> part2 : {}", part2());
+    println!("=> part2 : {}", part2(&machines));
 }
 
 // === PARSERS ===
@@ -101,7 +194,7 @@ fn machines(input: &str) -> IResult<&str, Vec<(Lights, Vec<Button>, Joltage)>> {
 
 // === Data structures ===
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct Lights {
     status: Vec<LightStatus>,
 }
@@ -119,9 +212,9 @@ impl Lights {
             }
         });
     }
-    fn diff(&self, other: &Self) -> Result<Vec<u64>, LightDiffError> {
+    fn diff(&self, other: &Self) -> Result<Vec<u64>, DiffError> {
         if self.status.len() != other.status.len() {
-            Err(LightDiffError)
+            Err(DiffError)
         } else {
             Ok(self
                 .status
@@ -134,7 +227,7 @@ impl Lights {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 enum LightStatus {
     On,
     Off,
@@ -150,22 +243,52 @@ impl LightStatus {
 }
 
 #[derive(Debug)]
-struct LightDiffError;
-impl Error for LightDiffError {}
-impl Display for LightDiffError {
+struct DiffError;
+impl Error for DiffError {}
+impl Display for DiffError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Could not perform diff of lights")
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 struct Button {
     numbers: Vec<u64>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Joltage {
     numbers: Vec<u64>,
+}
+
+impl Joltage {
+    fn new(len: usize) -> Self {
+        Self {
+            numbers: vec![0; len],
+        }
+    }
+
+    fn diff(&self, other: &Self) -> Result<Vec<u64>, DiffError> {
+        if self.numbers.len() != other.numbers.len() {
+            Err(DiffError)
+        } else {
+            Ok(self
+                .numbers
+                .iter()
+                .enumerate()
+                .filter(|(i, s)| **s != other.numbers[*i])
+                .map(|(i, _)| i as u64)
+                .collect())
+        }
+    }
+
+    fn apply_button(&mut self, button: &Button) {
+        self.numbers.iter_mut().enumerate().for_each(|(i, s)| {
+            if button.numbers.contains(&(i as u64)) {
+                *s += 1;
+            }
+        });
+    }
 }
 
 #[cfg(test)]
@@ -184,7 +307,7 @@ mod tests {
         let (_, machines) = machines(data).expect("Could not parse the input data");
         assert_eq!(machines.len(), 3);
         assert_eq!(part1(&machines), 7);
-        // assert_eq!(part2(), 24);
+        assert_eq!(part2(&machines), 33);
     }
 
     #[test]
