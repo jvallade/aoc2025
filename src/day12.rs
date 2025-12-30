@@ -6,11 +6,38 @@ use nom::{
 };
 
 fn part1(shapes: &[Shape], trees: &[Tree]) -> u64 {
-    todo!()
+    // Count the shapes that fits below the tree
+    let trees_that_fits: Vec<_> = trees
+        .iter()
+        .filter(|t| {
+            let area = t.size.0 * t.size.1;
+            let req_area: u64 = t
+                .gifts
+                .iter()
+                .enumerate()
+                .map(|(j, g)| {
+                    shapes[j]
+                        .chars
+                        .iter()
+                        .flatten()
+                        .filter(|&&c| c == '#')
+                        .count() as u64
+                        * *g
+                })
+                .sum();
+            req_area <= area
+        })
+        .collect();
+    println!(
+        "Remaining trees to consider : {} / {}",
+        trees_that_fits.len(),
+        trees.len()
+    );
+    trees_that_fits.len() as u64
 }
 
 fn part2() -> u64 {
-    todo!()
+    0
 }
 
 pub fn run(input: &str) {
