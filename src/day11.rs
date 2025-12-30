@@ -19,7 +19,7 @@ fn search_output(start: &str, target: &str, devices: &HashMap<String, &Device>) 
             if out == target {
                 res += 1;
             } else {
-                res += search_output(&out, target, devices)
+                res += search_output(out, target, devices)
             }
         });
     }
@@ -85,7 +85,7 @@ fn iterative_dfs(start: &str, target: &str, devices: &Graph) -> Vec<Vec<String>>
         if let Some(neighbors) = devices.get(&node) {
             for neighbor in neighbors.outputs.iter().rev() {
                 // Avoid cycles by checking if neighbor is already in path
-                if path.contains(&neighbor) {
+                if path.contains(neighbor) {
                     continue;
                 }
 
@@ -114,7 +114,7 @@ fn part1(devices: &[Device]) -> u64 {
 
 fn part2(devices: &[Device]) -> u64 {
     let mut devices_map = HashMap::new();
-    devices.into_iter().for_each(|d| {
+    devices.iter().for_each(|d| {
         devices_map.insert(d.name.clone(), (*d).clone());
     });
 
@@ -122,11 +122,11 @@ fn part2(devices: &[Device]) -> u64 {
     // so I focused on searching paths going first to
     // fft and then to dac
     println!("searching paths from dac");
-    let mut res = iterative_dfs("dac", "out", &devices_map).iter().count();
+    let mut res = iterative_dfs("dac", "out", &devices_map).len();
     println!("searching paths from fft to dac");
-    res *= iterative_dfs("fft", "dac", &devices_map).iter().count();
+    res *= iterative_dfs("fft", "dac", &devices_map).len();
     println!("searching paths from svr to fft");
-    res *= iterative_dfs("svr", "fft", &devices_map).iter().count();
+    res *= iterative_dfs("svr", "fft", &devices_map).len();
     res as u64
 }
 
