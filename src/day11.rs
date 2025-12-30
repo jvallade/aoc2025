@@ -1,15 +1,11 @@
 use std::collections::HashMap;
 use std::collections::{HashSet, VecDeque};
 
-use cached::UnboundCache;
-use cached::proc_macro::cached;
 use nom::{
     IResult, Parser,
     bytes::complete::tag,
-    character::complete::{alpha1, char, one_of, u64},
-    combinator::map,
-    multi::{many1, separated_list1},
-    sequence::delimited,
+    character::complete::{alpha1, char},
+    multi::separated_list1,
 };
 
 fn search_output(start: &str, target: &str, devices: &HashMap<String, &Device>) -> u64 {

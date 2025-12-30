@@ -1,12 +1,8 @@
-use cached::UnboundCache;
-use cached::proc_macro::cached;
 use nom::{
     IResult, Parser,
     bytes::complete::tag,
     character::complete::{char, one_of, u64, usize},
-    combinator::map,
     multi::{many0, many1, separated_list1},
-    sequence::delimited,
 };
 
 fn part1(shapes: &[Shape], trees: &[Tree]) -> u64 {
